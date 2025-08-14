@@ -1,0 +1,121 @@
+🏛️ AI CODE GLADIATOR SYSTEM - ARCHITECTURE BLUEPRINT
+📁 PROJECT STRUCTURE
+github-gladiator-plugin/
+├── 🎯 core/
+│   ├── agents/
+│   │   ├── agent-1-scout/
+│   │   │   ├── scanner.js              # Repo discovery & initial analysis
+│   │   │   ├── assessment.js           # Salvageable/Trash/Potential scoring
+│   │   │   ├── promotion-hunter.js     # Looks for Agent-2's mistakes
+│   │   │   └── reports/
+│   │   │       ├── findings.json
+│   │   │       └── attack-vectors.json # Dirt on other agents
+│   │   │
+│   │   ├── agent-2-sweeper/
+│   │   │   ├── detail-scanner.js       # Deep dive analysis
+│   │   │   ├── crumb-finder.js         # Catches what Scout missed
+│   │   │   ├── sabotage.js            # Actively hunts Agent-1 failures
+│   │   │   └── reports/
+│   │   │       ├── corrections.json
+│   │   │       └── agent1-failures.json
+│   │   │
+│   │   ├── agent-3-inspector/
+│   │   │   ├── report-analyzer.js      # Reviews Agent 1 & 2 work
+│   │   │   ├── red-green-flagging.js   # Final judgment calls
+│   │   │   ├── paranoia-mode.js        # Watches for Agent-2 & 4 attacks
+│   │   │   └── reports/
+│   │   │       ├── final-verdicts.json
+│   │   │       └── subordinate-errors.json
+│   │   │
+│   │   └── agent-4-fixer/
+│   │       ├── code-surgeon.js         # Actual code modifications
+│   │       ├── green-flag-processor.js # Only touches approved repos
+│   │       ├── throne-defender.js      # Reviews all agents for demotion
+│   │       └── reports/
+│   │           ├── fixes-applied.json
+│   │           └── demotion-targets.json
+│   │
+├── 🏟️ arena/
+│   ├── competition-engine.js           # Manages agent rankings
+│   ├── promotion-system.js             # Handles rank changes
+│   ├── mistake-tracker.js              # Logs failures for demotions
+│   └── urgent-mode-coordinator.js      # All-agents-attack protocol
+│   │
+├── 🎮 github-integration/
+│   ├── webhook-listeners/
+│   │   ├── new-repo-detector.js        # Triggers Agent-1
+│   │   ├── urgent-flag-monitor.js      # Activates battle mode
+│   │   └── push-event-handler.js       # Real-time updates
+│   │
+│   ├── api-connectors/
+│   │   ├── repo-scanner.js             # GitHub API integration
+│   │   ├── pr-creator.js               # Auto-creates fix PRs
+│   │   ├── issue-tracker.js            # Logs findings as issues
+│   │   └── branch-manager.js           # Handles agent work branches
+│   │
+│   └── permissions/
+│       ├── read-access.js              # All repos scanning rights
+│       ├── write-access.js             # Agent-4 only modification rights
+│       └── delete-protection.js        # NO DELETE permissions (safety)
+│   │
+├── 🧠 mcp-integration/
+│   ├── mcp-servers/
+│   │   ├── agent-communication.js      # Inter-agent messaging
+│   │   ├── context-sharing.js          # Cross-repo analysis
+│   │   └── claude-integration.js       # AI decision making
+│   │
+│   ├── protocols/
+│   │   ├── normal-mode.json            # Sequential operation
+│   │   ├── urgent-mode.json            # Parallel attack protocol
+│   │   └── competition-rules.json      # Promotion/demotion logic
+│   │
+└── 📊 dashboard/
+    ├── gladiator-arena.html            # Real-time agent battles
+    ├── repo-status-board.js            # Red/Green flag visualization
+    ├── agent-rankings.js               # Current hierarchy display
+    ├── battle-history.js               # Past promotions/demotions
+    └── performance-metrics.js          # Win/loss records per agent
+🏆 AGENT HIERARCHY & BATTLE MECHANICS
+NORMAL MODE (Sequential Attack)
+Repo Queue → Agent-1 (Scout) → Agent-2 (Sweeper) → Agent-3 (Inspector) → Agent-4 (Fixer)
+              ↓                    ↓                      ↓                    ↓
+         [Hunts for dirt]    [Hunts Agent-1]      [Paranoid mode]      [Reviews all]
+URGENT MODE (Gladiator Battle Royale)
+URGENT REPO
+    ↓
+┌─────────────────────────────────────────┐
+│  ALL 4 AGENTS ATTACK SIMULTANEOUSLY    │
+├─────────────────────────────────────────┤
+│ Agent-1: Frontend/UI Analysis           │
+│ Agent-2: Backend/Logic Review           │
+│ Agent-3: Architecture Approval          │
+│ Agent-4: Implementation                 │
+└─────────────────────────────────────────┘
+            ↓
+    [All agents look for others' mistakes]
+            ↓
+    [Promotions/Demotions based on performance]
+⚔️ COMPETITION MECHANICS
+Promotion Triggers
+
+Agent finds critical bug missed by higher agent → Instant promotion
+Agent prevents major disaster → Moves up one rank
+Agent completes impossible fix → Challenges for top position
+
+Demotion Triggers
+
+Missed obvious bug caught by lower agent → Instant demotion
+False positive/negative on repo assessment → Rank penalty
+Failed to catch subordinate's mistake → Supervision failure
+
+🚀 GITHUB PLUGIN POTENTIAL
+Plugin Features
+
+One-click installation across entire GitHub organization
+Real-time battle dashboard showing agent competitions
+Customizable urgency levels for different repo priorities
+Battle history & statistics for each agent's performance
+Safe mode toggle (removes competition, boring but safe)
+
+This system turns code review into a spectator sport while delivering the most thorough analysis possible. Every repo gets multiple hostile reviews from agents trying to prove their worth.
+The ultimate result: Your codebase becomes bulletproof because 4 AIs are literally fighting each other to find every possible flaw.
