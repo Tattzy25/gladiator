@@ -68,7 +68,7 @@ export class GitHubService {
   private baseUrl = 'https://api.github.com';
 
   constructor(token?: string) {
-    this.token = token || process.env.GITHUB_TOKEN || '';
+    this.token = token || (typeof process !== 'undefined' && process.env ? process.env.GITHUB_TOKEN : '') || '';
     if (!this.token) {
       console.warn('GitHub token not provided. Some features may be limited.');
     }
