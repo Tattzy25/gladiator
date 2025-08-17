@@ -4,6 +4,8 @@
  */
 
 import { MCPAgent, MCPMessage, MCPResponse, mcpServer } from './mcp-server';
+import { gitHubService, RepositoryAnalysis as GitHubRepositoryAnalysis } from './github-service';
+import { AnalysisContext } from './agents';
 
 export interface JudgeDecision {
   id: string;
@@ -115,34 +117,6 @@ export class JudgeOrchestrator {
         this.emergencyIntervention(repoUrl, 'analysis_timeout');
       }
     }
-  }
-
-  /**
-   * Initiates repository analysis with agent chain
-   */
-  async initiateRepositoryAnalysis(repositoryUrl: string, mode: 'normal' | 'urgent'): Promise<string> {
-    const analysisId = `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    const analysis: RepositoryAnalysis = {
-      id: analysisId,
-      repositoryUrl,
-      mode,
-      status: 'active',
-      startTime: new Date(),
-      currentAgent: 'scout',
-      agentReports: [],
-      mistakes: []
-    };
-
-    this.activeAnalysis.set(repositoryUrl, analysis);
-
-    if (mode === 'normal') {
-      await this.startSequentialAnalysis(analysis);
-    } else {
-      await this.startBattleRoyaleAnalysis(analysis);
-    }
-
-    return analysisId;
   }
 
   private async startSequentialAnalysis(analysis: RepositoryAnalysis) {
@@ -402,6 +376,179 @@ export class JudgeOrchestrator {
     
     // Clean up stalled analysis
     this.activeAnalysis.delete(repositoryUrl);
+  }
+
+  /**
+   * Initiate comprehensive repository analysis
+   */
+  async initiateRepositoryAnalysis(repositoryUrl: string, mode: 'normal' | 'urgent'): Promise<void> {
+    console.log(`🧠 Judge initiating ${mode} analysis for ${repositoryUrl}`);
+    
+    try {
+      // Perform comprehensive GitHub repository analysis
+      const repositoryAnalysis = await gitHubService.analyzeRepository(repositoryUrl);
+      
+      // Create analysis tracking
+      const analysis: RepositoryAnalysis = {
+        id: `analysis_${Date.now()}`,
+        repositoryUrl,
+        mode,
+        status: 'active',
+        startTime: new Date(),
+        currentAgent: 'scout',
+        agentReports: [],
+        mistakes: []
+      };
+      
+      this.activeAnalysis.set(repositoryUrl, analysis);
+      
+      if (mode === 'normal') {
+        await this.sequentialAnalysis(analysis, repositoryAnalysis);
+      } else {
+        await this.battleRoyaleAnalysis(analysis, repositoryAnalysis);
+      }
+      
+    } catch (error) {
+      console.error(`❌ Judge failed to initiate analysis for ${repositoryUrl}:`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Sequential analysis mode (normal)
+   */
+  private async sequentialAnalysis(analysis: RepositoryAnalysis, repositoryData: GitHubRepositoryAnalysis): Promise<void> {
+    const agentSequence = ['scout', 'sweeper', 'inspector', 'fixer'];
+    
+    for (const agentRank of agentSequence) {
+      if (!this.active || mcpServer.isEmergencyStopActive()) {
+        console.log(`🚨 Emergency stop during ${agentRank} analysis`);
+        break;
+      }
+      
+      analysis.currentAgent = agentRank;
+      
+      try {
+        const agent = this.findAgentByRank(agentRank);
+        if (!agent) {
+          throw new Error(`Agent not found: ${agentRank}`);
+        }
+        
+        // Create analysis context
+        const context: AnalysisContext = {
+          repositoryUrl: analysis.repositoryUrl,
+          repositoryAnalysis: repositoryData,
+          mode: analysis.mode,
+          previousReports: analysis.agentReports.slice()
+        };
+        
+        // Import agents dynamically to avoid circular dependencies
+        const { createAgent } = await import('./agents');
+        const agentInstance = createAgent(agentRank);
+        
+        // Perform analysis
+        const report = await agentInstance.analyzeRepository(context);
+        analysis.agentReports.push(report);
+        
+        console.log(`✅ ${agentRank} completed analysis: ${report.assessment}`);
+        
+        // Judge reviews and validates each report
+        this.reviewAgentWork(report.agentId, analysis);
+        
+      } catch (error) {
+        console.error(`❌ ${agentRank} analysis failed:`, error);
+        this.handleAgentFailure(agentRank, error instanceof Error ? error.message : 'Unknown error');
+      }
+    }
+    
+    // Issue final verdict
+    this.issueFinalVerdict(analysis);
+  }
+
+  /**
+   * Battle royale analysis mode (urgent)
+   */
+  private async battleRoyaleAnalysis(analysis: RepositoryAnalysis, repositoryData: GitHubRepositoryAnalysis): Promise<void> {
+    console.log(`⚔️ Judge coordinating battle royale analysis for ${analysis.repositoryUrl}`);
+    
+    const agents = ['scout', 'sweeper', 'inspector', 'fixer'];
+    
+    // Create analysis context for all agents
+    const context: AnalysisContext = {
+      repositoryUrl: analysis.repositoryUrl,
+      repositoryAnalysis: repositoryData,
+      mode: analysis.mode,
+      previousReports: []
+    };
+    
+    try {
+      // Launch all agents simultaneously
+      const { createAgent } = await import('./agents');
+      const analysisPromises = agents.map(async (agentRank) => {
+        try {
+          const agentInstance = createAgent(agentRank);
+          return await agentInstance.analyzeRepository(context);
+        } catch (error) {
+          console.error(`Agent ${agentRank} failed in battle royale:`, error);
+          throw error;
+        }
+      });
+      
+      // Wait for all analyses to complete
+      const results = await Promise.allSettled(analysisPromises);
+      
+      // Process results
+      results.forEach((result, index) => {
+        if (result.status === 'fulfilled') {
+          analysis.agentReports.push(result.value);
+          console.log(`✅ ${agents[index]} completed battle analysis: ${result.value.assessment}`);
+        } else {
+          console.error(`❌ ${agents[index]} failed in battle:`, result.reason);
+          this.handleAgentFailure(agents[index], result.reason?.message || 'Battle failure');
+        }
+      });
+      
+      // Judge resolves conflicts and issues verdict
+      this.reviewBattleResults(analysis, results);
+      this.issueFinalVerdict(analysis);
+      
+    } catch (error) {
+      console.error('❌ Battle royale analysis failed:', error);
+      this.emergencyIntervention(analysis.repositoryUrl, 'Battle royale failure');
+    }
+  }
+
+  /**
+   * Review battle royale results for conflicts and mistakes
+   */
+  private reviewBattleResults(analysis: RepositoryAnalysis, results: PromiseSettledResult<AgentReport>[]): void {
+    const successfulReports = results
+      .filter((r): r is PromiseFulfilledResult<AgentReport> => r.status === 'fulfilled')
+      .map(r => r.value);
+
+    // Review each agent's work for mistakes
+    successfulReports.forEach(report => {
+      this.reviewAgentWork(report.agentId, analysis);
+    });
+
+    // Look for contradictions between assessments
+    for (let i = 0; i < successfulReports.length; i++) {
+      for (let j = i + 1; j < successfulReports.length; j++) {
+        const report1 = successfulReports[i];
+        const report2 = successfulReports[j];
+        
+        if (report1.assessment !== report2.assessment) {
+          console.log(`⚔️ Judge found assessment conflict: ${report1.agentRank} says ${report1.assessment}, ${report2.agentRank} says ${report2.assessment}`);
+          
+          // Judge makes final decision based on confidence and evidence
+          if (report1.confidence > report2.confidence) {
+            console.log(`🧠 Judge sides with ${report1.agentRank} (higher confidence)`);
+          } else {
+            console.log(`🧠 Judge sides with ${report2.agentRank} (higher confidence)`);
+          }
+        }
+      }
+    }
   }
 
   // Public interface methods

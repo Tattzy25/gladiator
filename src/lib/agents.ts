@@ -1,14 +1,16 @@
 /**
  * AI Agent Base Class and Specific Agent Implementations
- * Each agent has a unique personality and specialization
+ * Each agent has a unique personality and Claude AI integration
  */
 
 import { MCPMessage, MCPResponse, mcpServer } from './mcp-server';
 import { AgentReport, Issue } from './judge-orchestrator';
+import { claudeAIService } from './claude-ai-service';
+import { RepositoryAnalysis } from './github-service';
 
 export interface AnalysisContext {
   repositoryUrl: string;
-  repositoryContent?: any;
+  repositoryAnalysis?: RepositoryAnalysis;
   mode: 'normal' | 'urgent';
   previousReports?: AgentReport[];
   timeLimit?: number;
@@ -120,6 +122,74 @@ export abstract class BaseAgent {
 
   protected abstract performAnalysis(context: AnalysisContext): Promise<AgentReport>;
 
+  /**
+   * Enhanced analysis using Claude AI
+   */
+  protected async performAIAnalysis(context: AnalysisContext, agentType: 'scout' | 'sweeper' | 'inspector' | 'fixer'): Promise<AgentReport> {
+    const startTime = Date.now();
+    
+    try {
+      console.log(`${this.name} using ${claudeAIService.isAvailable() ? 'Claude AI' : 'simulation'} for analysis`);
+      
+      // Use Claude AI for real analysis
+      const analysisResult = await claudeAIService.analyzeWithAgent(
+        agentType,
+        context.repositoryAnalysis || { url: context.repositoryUrl },
+        context.previousReports
+      );
+      
+      // Parse the AI response
+      const parsedResult = this.parseAIResponse(analysisResult);
+      
+      const endTime = Date.now();
+      
+      return {
+        agentId: this.agentId,
+        agentRank: this.rank,
+        assessment: parsedResult.assessment,
+        issues: parsedResult.issues || [],
+        recommendations: parsedResult.recommendations || [],
+        confidence: parsedResult.confidence || 0.8,
+        timeSpent: endTime - startTime,
+        mistakes: parsedResult.mistakes || []
+      };
+    } catch (error) {
+      console.error(`${this.name} AI analysis failed, falling back to simulation:`, error);
+      return this.performAnalysis(context);
+    }
+  }
+
+  /**
+   * Parse AI response with error handling
+   */
+  protected parseAIResponse(response: string): any {
+    try {
+      // Try to extract JSON from the response
+      const jsonMatch = response.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      
+      // If no JSON found, create a basic response
+      return {
+        assessment: 'salvageable',
+        issues: [],
+        recommendations: ['AI analysis parsing failed - manual review recommended'],
+        confidence: 0.5,
+        rationale: 'Failed to parse AI response properly'
+      };
+    } catch (error) {
+      console.error('Failed to parse AI response:', error);
+      return {
+        assessment: 'salvageable',
+        issues: [],
+        recommendations: ['AI response parsing error - manual review needed'],
+        confidence: 0.3,
+        rationale: 'AI response parsing error'
+      };
+    }
+  }
+
   protected async submitReport(report: AgentReport): Promise<void> {
     const message: MCPMessage = {
       id: `report_${Date.now()}`,
@@ -155,6 +225,17 @@ export class ScoutAgent extends BaseAgent {
   }
 
   protected async performAnalysis(context: AnalysisContext): Promise<AgentReport> {
+    // Use Claude AI for real intelligence, fall back to simulation
+    try {
+      return await this.performAIAnalysis(context, 'scout');
+    } catch (error) {
+      console.error('Scout AI analysis failed, using simulation:', error);
+      return this.simulateAnalysis(context);
+    }
+  }
+
+  // Simulation fallback method
+  private async simulateAnalysis(context: AnalysisContext): Promise<AgentReport> {
     const startTime = Date.now();
     
     // Scout performs initial reconnaissance
@@ -307,6 +388,17 @@ export class SweeperAgent extends BaseAgent {
   }
 
   protected async performAnalysis(context: AnalysisContext): Promise<AgentReport> {
+    // Use Claude AI for real intelligence, fall back to simulation
+    try {
+      return await this.performAIAnalysis(context, 'sweeper');
+    } catch (error) {
+      console.error('Sweeper AI analysis failed, using simulation:', error);
+      return this.simulateAnalysis(context);
+    }
+  }
+
+  // Simulation fallback method
+  private async simulateAnalysis(context: AnalysisContext): Promise<AgentReport> {
     const startTime = Date.now();
     
     // Sweeper validates Scout's work and finds additional issues
@@ -479,6 +571,17 @@ export class InspectorAgent extends BaseAgent {
   }
 
   protected async performAnalysis(context: AnalysisContext): Promise<AgentReport> {
+    // Use Claude AI for real intelligence, fall back to simulation
+    try {
+      return await this.performAIAnalysis(context, 'inspector');
+    } catch (error) {
+      console.error('Inspector AI analysis failed, using simulation:', error);
+      return this.simulateAnalysis(context);
+    }
+  }
+
+  // Simulation fallback method
+  private async simulateAnalysis(context: AnalysisContext): Promise<AgentReport> {
     const startTime = Date.now();
     
     // Inspector makes final judgment based on all previous work
@@ -631,6 +734,17 @@ export class FixerAgent extends BaseAgent {
   }
 
   protected async performAnalysis(context: AnalysisContext): Promise<AgentReport> {
+    // Use Claude AI for real intelligence, fall back to simulation
+    try {
+      return await this.performAIAnalysis(context, 'fixer');
+    } catch (error) {
+      console.error('Fixer AI analysis failed, using simulation:', error);
+      return this.simulateAnalysis(context);
+    }
+  }
+
+  // Simulation fallback method
+  private async simulateAnalysis(context: AnalysisContext): Promise<AgentReport> {
     const startTime = Date.now();
     
     // Fixer only works on GREEN-FLAGGED repositories

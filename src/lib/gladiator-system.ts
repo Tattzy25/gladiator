@@ -5,8 +5,8 @@
 
 import { mcpServer, MCPServer } from './mcp-server';
 import { judgeOrchestrator, JudgeOrchestrator } from './judge-orchestrator';
-import { initializeAllAgents, BaseAgent } from './agents';
-import { gitHubService, GitHubService } from './github-service';
+import { initializeAllAgents, BaseAgent, AnalysisContext } from './agents';
+import { gitHubService, GitHubService, RepositoryAnalysis } from './github-service';
 
 export interface SystemConfiguration {
   githubToken?: string;
