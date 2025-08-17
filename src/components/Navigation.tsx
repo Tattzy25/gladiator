@@ -26,6 +26,13 @@ const Navigation: React.FC = () => {
 
   const navItems = [
     {
+      path: '/system',
+      label: 'System Control',
+      icon: Settings,
+      badge: null,
+      description: 'Initialize and control the AI system'
+    },
+    {
       path: '/arena',
       label: 'Live Arena',
       icon: Swords,
@@ -33,9 +40,23 @@ const Navigation: React.FC = () => {
       description: 'Watch live gladiator battles'
     },
     {
+      path: '/live',
+      label: 'Live Stream',
+      icon: Activity,
+      badge: null,
+      description: 'Real-time agent activity feeds'
+    },
+    {
+      path: '/deploy',
+      label: 'Deploy Agents',
+      icon: Users,
+      badge: null,
+      description: 'Multi-user agent deployment'
+    },
+    {
       path: '/agents',
       label: 'Command Center',
-      icon: Users,
+      icon: Shield,
       badge: activeAgents > 0 ? activeAgents : null,
       description: 'Manage your AI gladiators'
     },
@@ -61,7 +82,7 @@ const Navigation: React.FC = () => {
         <div className="max-w-7xl mx-auto w-full px-6 py-4">
           <div className="flex items-center justify-between">
             {/* Logo */}
-            <Link to="/arena" className="flex items-center gap-3 group">
+            <Link to="/system" className="flex items-center gap-3 group">
               <div className="relative">
                 <Shield className="w-8 h-8 text-gold group-hover:text-red-400 transition-colors" />
                 <motion.div 
@@ -144,7 +165,7 @@ const Navigation: React.FC = () => {
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             {/* Mobile Logo */}
-            <Link to="/arena" className="flex items-center gap-2">
+            <Link to="/system" className="flex items-center gap-2">
               <Shield className="w-6 h-6 text-gold" />
               <span className="text-lg font-bold bg-gradient-to-r from-gold to-red-400 bg-clip-text text-transparent">
                 GLADIATORS

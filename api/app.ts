@@ -7,6 +7,7 @@ import cors from 'cors';
 import path from 'path';
 import dotenv from 'dotenv';
 import authRoutes from './routes/auth';
+import streamingRoutes from './routes/streaming.js';
 
 // load env
 dotenv.config();
@@ -22,6 +23,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
  * API Routes
  */
 app.use('/api/auth', authRoutes);
+app.use('/api', streamingRoutes);
 
 /**
  * health
