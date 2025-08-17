@@ -7,6 +7,7 @@ import { mcpServer, MCPServer } from './mcp-server';
 import { judgeOrchestrator, JudgeOrchestrator } from './judge-orchestrator';
 import { initializeAllAgents, BaseAgent, AnalysisContext } from './agents';
 import { gitHubService, GitHubService, RepositoryAnalysis } from './github-service';
+import { productionMonitoring } from './production-monitoring';
 
 export interface SystemConfiguration {
   githubToken?: string;
@@ -79,22 +80,35 @@ export class GladiatorSystem {
       throw new Error('System is already initialized');
     }
 
+    const correlationId = `init_${Date.now()}`;
+
     try {
+      productionMonitoring.log('info', 'system', 'gladiator-system', 'Initializing AI Gladiator System', { config: this.config }, correlationId);
+      productionMonitoring.auditEvent('system_change', 'system', 'initialize', 'gladiator-system', this.config, 'success', correlationId);
+
       console.log('🏛️ Initializing AI Gladiator System...');
 
       // Initialize all agents
       console.log('⚔️ Deploying gladiator agents...');
+      productionMonitoring.log('info', 'agent', 'deployment', 'Starting agent deployment', undefined, correlationId);
+      
       this.agents = await initializeAllAgents();
       console.log(`✅ ${this.agents.length} agents deployed and ready for battle`);
+      
+      productionMonitoring.log('info', 'agent', 'deployment', `${this.agents.length} agents deployed successfully`, { agentCount: this.agents.length }, correlationId);
 
       // Verify GitHub access if token provided
       if (this.config.githubToken) {
         console.log('🔗 Verifying GitHub integration...');
+        productionMonitoring.log('info', 'system', 'github', 'Verifying GitHub integration', undefined, correlationId);
+        
         // Test GitHub access with a simple API call
         // await this.githubService.validateRepository('github/github'); // Use a known public repo for testing
         console.log('✅ GitHub integration verified');
+        productionMonitoring.log('info', 'system', 'github', 'GitHub integration verified', undefined, correlationId);
       } else {
         console.log('⚠️ GitHub token not provided - repository analysis will be limited');
+        productionMonitoring.log('warn', 'system', 'github', 'GitHub token not provided - functionality limited', undefined, correlationId);
       }
 
       // Start the analysis queue processor
@@ -108,8 +122,18 @@ export class GladiatorSystem {
       console.log('🧠 Judge is monitoring all agents continuously...');
       console.log('⚡ Emergency stop controls are armed and ready...');
 
+      productionMonitoring.log('info', 'system', 'gladiator-system', 'AI Gladiator System fully initialized and active', {
+        agentCount: this.agents.length,
+        uptime: 0
+      }, correlationId);
+
+      productionMonitoring.auditEvent('system_change', 'system', 'activate', 'gladiator-system', 
+        { timestamp: this.startTime, agentCount: this.agents.length }, 'success', correlationId);
+
     } catch (error) {
       console.error('❌ Failed to initialize Gladiator System:', error);
+      productionMonitoring.log('critical', 'system', 'gladiator-system', 'Failed to initialize system', { error: error instanceof Error ? error.message : error }, correlationId);
+      productionMonitoring.auditEvent('system_change', 'system', 'initialize', 'gladiator-system', { error }, 'failure', correlationId);
       throw error;
     }
   }
@@ -122,36 +146,75 @@ export class GladiatorSystem {
       throw new Error('System is not active');
     }
 
-    // Validate repository URL
-    const repoInfo = await this.githubService.validateRepository(request.repositoryUrl);
-    if (!repoInfo) {
-      throw new Error('Invalid or inaccessible repository');
+    const correlationId = `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    const startTime = Date.now();
+
+    try {
+      productionMonitoring.log('info', 'analysis', 'repository', 'Starting repository analysis', {
+        repositoryUrl: request.repositoryUrl,
+        mode: request.mode,
+        priority: request.priority
+      }, correlationId);
+
+      productionMonitoring.auditEvent('analysis_start', request.requestedBy, 'analyze', request.repositoryUrl, 
+        { mode: request.mode, priority: request.priority }, 'success', correlationId);
+
+      // Validate repository URL
+      productionMonitoring.log('debug', 'analysis', 'validation', 'Validating repository URL', { url: request.repositoryUrl }, correlationId);
+      
+      const repoInfo = await this.githubService.validateRepository(request.repositoryUrl);
+      if (!repoInfo) {
+        productionMonitoring.log('error', 'analysis', 'validation', 'Invalid or inaccessible repository', { url: request.repositoryUrl }, correlationId);
+        throw new Error('Invalid or inaccessible repository');
+      }
+
+      productionMonitoring.log('info', 'analysis', 'validation', 'Repository validation successful', {
+        repository: repoInfo.fullName,
+        stars: repoInfo.stars,
+        language: repoInfo.language
+      }, correlationId);
+
+      // Create analysis ID
+      const analysisId = `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Create analysis result tracking
+      const analysisResult: AnalysisResult = {
+        id: analysisId,
+        repositoryUrl: request.repositoryUrl,
+        status: 'pending',
+        mode: request.mode,
+        startTime: new Date(),
+        agentReports: [],
+        judgeDecisions: [],
+        emergencyStops: 0,
+        errors: []
+      };
+
+      this.analysisResults.set(analysisId, analysisResult);
+
+      // Add to queue
+      this.analysisQueue.push(request);
+
+      console.log(`📊 Repository queued for analysis: ${request.repositoryUrl} (${request.mode} mode)`);
+      
+      productionMonitoring.recordMetric('analysis_queued', 1, 'count', 'gladiator-system');
+      productionMonitoring.recordMetric('queue_size', this.analysisQueue.length, 'count', 'gladiator-system');
+      
+      return analysisId;
+    } catch (error) {
+      const duration = Date.now() - startTime;
+      productionMonitoring.log('error', 'analysis', 'repository', 'Repository analysis failed', {
+        repositoryUrl: request.repositoryUrl,
+        error: error instanceof Error ? error.message : error,
+        duration
+      }, correlationId);
+
+      productionMonitoring.auditEvent('analysis_start', request.requestedBy, 'analyze', request.repositoryUrl, 
+        { error: error instanceof Error ? error.message : error }, 'failure', correlationId);
+
+      productionMonitoring.recordMetric('analysis_failures', 1, 'count', 'gladiator-system');
+      throw error;
     }
-
-    // Create analysis ID
-    const analysisId = `analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-
-    // Create analysis result tracking
-    const analysisResult: AnalysisResult = {
-      id: analysisId,
-      repositoryUrl: request.repositoryUrl,
-      status: 'pending',
-      mode: request.mode,
-      startTime: new Date(),
-      agentReports: [],
-      judgeDecisions: [],
-      emergencyStops: 0,
-      errors: []
-    };
-
-    this.analysisResults.set(analysisId, analysisResult);
-
-    // Add to queue
-    this.analysisQueue.push(request);
-
-    console.log(`📊 Repository queued for analysis: ${request.repositoryUrl} (${request.mode} mode)`);
-    
-    return analysisId;
   }
 
   /**

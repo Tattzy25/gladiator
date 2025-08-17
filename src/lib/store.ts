@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import { createGladiatorSystem, GladiatorSystem, AnalysisRequest, AnalysisResult, SystemStatus } from './gladiator-system';
+import { agentRankingSystem, AgentRanking, LeaderboardEntry, RankingAction } from './agent-ranking-system';
 
 // Agent Types
 export type AgentRank = 'Scout' | 'Sweeper' | 'Inspector' | 'Fixer';
@@ -75,6 +76,19 @@ interface GladiatorStore {
   isSystemInitialized: boolean;
   emergencyStopActive: boolean;
 
+  // Agent Ranking System integration
+  agentRankings: AgentRanking[];
+  leaderboard: LeaderboardEntry[];
+  recentRankingActions: RankingAction[];
+  rankingStats: {
+    totalAgents: number;
+    activeAgents: number;
+    disqualifiedAgents: number;
+    totalAnalyses: number;
+    averageSuccessRate: number;
+    topPerformer: string;
+  } | null;
+
   // Existing actions
   addAgent: (agent: Omit<Agent, 'id'>) => void;
   updateAgent: (id: string, updates: Partial<Agent>) => void;
@@ -99,6 +113,12 @@ interface GladiatorStore {
   deactivateEmergencyStop: () => Promise<void>;
   updateSystemStatus: () => void;
   getAnalysisResult: (id: string) => AnalysisResult | null;
+
+  // Agent Ranking System actions
+  updateRankings: () => void;
+  recordAgentPerformance: (agentId: string, performance: any) => void;
+  getAgentRanking: (agentId: string) => AgentRanking | null;
+  awardBattleVictory: (winnerId: string, losers: string[]) => void;
 }
 
 // Initial mock data
@@ -212,6 +232,12 @@ export const useGladiatorStore = create<GladiatorStore>()(subscribeWithSelector(
   analysisResults: [],
   isSystemInitialized: false,
   emergencyStopActive: false,
+
+  // Agent Ranking System state
+  agentRankings: [],
+  leaderboard: [],
+  recentRankingActions: [],
+  rankingStats: null,
   
   // Agent actions
   addAgent: (agentData) => {
@@ -387,9 +413,26 @@ export const useGladiatorStore = create<GladiatorStore>()(subscribeWithSelector(
         });
       };
       
+      // Start ranking monitoring
+      const updateRankings = () => {
+        const rankings = agentRankingSystem.getAllRankings();
+        const leaderboard = agentRankingSystem.getLeaderboard();
+        const recentActions = agentRankingSystem.getRecentActions(10);
+        const stats = agentRankingSystem.getRankingStats();
+        
+        set({
+          agentRankings: rankings,
+          leaderboard,
+          recentRankingActions: recentActions,
+          rankingStats: stats
+        });
+      };
+      
       // Update status every 5 seconds
       setInterval(updateStatus, 5000);
+      setInterval(updateRankings, 10000); // Update rankings every 10 seconds
       updateStatus(); // Initial update
+      updateRankings(); // Initial ranking update
       
     } catch (error) {
       console.error('Failed to initialize Gladiator System:', error);
@@ -457,5 +500,45 @@ export const useGladiatorStore = create<GladiatorStore>()(subscribeWithSelector(
   getAnalysisResult: (id: string) => {
     const { gladiatorSystem } = get();
     return gladiatorSystem ? gladiatorSystem.getAnalysisResult(id) : null;
+  },
+
+  // Agent Ranking System actions
+  updateRankings: () => {
+    const rankings = agentRankingSystem.getAllRankings();
+    const leaderboard = agentRankingSystem.getLeaderboard();
+    const recentActions = agentRankingSystem.getRecentActions(10);
+    const stats = agentRankingSystem.getRankingStats();
+    
+    set({
+      agentRankings: rankings,
+      leaderboard,
+      recentRankingActions: recentActions,
+      rankingStats: stats
+    });
+  },
+
+  recordAgentPerformance: (agentId: string, performance: any) => {
+    agentRankingSystem.recordPerformance(
+      agentId,
+      performance.analysisId || 'unknown',
+      performance.repositoryUrl || 'unknown',
+      performance
+    );
+    
+    // Update rankings after recording performance
+    const { updateRankings } = get();
+    updateRankings();
+  },
+
+  getAgentRanking: (agentId: string) => {
+    return agentRankingSystem.getAgentRanking(agentId);
+  },
+
+  awardBattleVictory: (winnerId: string, losers: string[]) => {
+    agentRankingSystem.awardBattleVictory(winnerId, losers);
+    
+    // Update rankings after battle
+    const { updateRankings } = get();
+    updateRankings();
   },
 })));
