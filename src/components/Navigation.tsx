@@ -40,9 +40,23 @@ const Navigation: React.FC = () => {
       description: 'Watch live gladiator battles'
     },
     {
+      path: '/live',
+      label: 'Live Stream',
+      icon: Activity,
+      badge: null,
+      description: 'Real-time agent activity feeds'
+    },
+    {
+      path: '/deploy',
+      label: 'Deploy Agents',
+      icon: Users,
+      badge: null,
+      description: 'Multi-user agent deployment'
+    },
+    {
       path: '/agents',
       label: 'Command Center',
-      icon: Users,
+      icon: Shield,
       badge: activeAgents > 0 ? activeAgents : null,
       description: 'Manage your AI gladiators'
     },

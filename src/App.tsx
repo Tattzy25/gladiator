@@ -5,6 +5,8 @@ import Arena from './components/Arena';
 import AgentCenter from './components/AgentCenter';
 import Leaderboard from './components/Leaderboard';
 import SystemControl from './components/SystemControl';
+import LiveStreamingDashboard from './components/LiveStreamingDashboard';
+import MultiUserAgentDeployment from './components/MultiUserAgentDeployment';
 
 function App() {
   return (
@@ -16,6 +18,8 @@ function App() {
           <Route path="/agents" element={<AgentCenter />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
           <Route path="/system" element={<SystemControl />} />
+          <Route path="/live" element={<LiveStreamingDashboard />} />
+          <Route path="/deploy" element={<MultiUserAgentDeployment />} />
           <Route path="/" element={<Navigate to="/system" replace />} />
         </Routes>
       </div>
