@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
+import { createGladiatorSystem, GladiatorSystem, AnalysisRequest, AnalysisResult, SystemStatus } from './gladiator-system';
 
 // Agent Types
 export type AgentRank = 'Scout' | 'Sweeper' | 'Inspector' | 'Fixer';
@@ -58,39 +59,46 @@ export interface Repository {
 }
 
 interface GladiatorStore {
-  // Agents
+  // Existing state
   agents: Agent[];
   activeAgent: Agent | null;
-  
-  // Battles
   battles: Battle[];
   activeBattle: Battle | null;
-  
-  // Repositories
   repositories: Repository[];
-  
-  // UI State
   isArenaActive: boolean;
   selectedView: 'arena' | 'agents' | 'battles' | 'rankings';
-  
-  // Actions
+
+  // New Gladiator System integration
+  gladiatorSystem: GladiatorSystem | null;
+  systemStatus: SystemStatus | null;
+  analysisResults: AnalysisResult[];
+  isSystemInitialized: boolean;
+  emergencyStopActive: boolean;
+
+  // Existing actions
   addAgent: (agent: Omit<Agent, 'id'>) => void;
   updateAgent: (id: string, updates: Partial<Agent>) => void;
   updateAgentStatus: (id: string, status: AgentStatus) => void;
   updateAgentPoints: (id: string, points: number) => void;
   promoteAgent: (id: string) => void;
   demoteAgent: (id: string) => void;
-  
   startBattle: (mode: BattleMode, participantIds: string[], repository: string) => void;
   endBattle: (battleId: string, winnerId?: string) => void;
   addBattleLog: (battleId: string, log: Omit<BattleLog, 'id'>) => void;
-  
   addRepository: (repo: Omit<Repository, 'id'>) => void;
-  
   setActiveAgent: (agent: Agent | null) => void;
   setActiveBattle: (battle: Battle | null) => void;
   setArenaActive: (active: boolean) => void;
   setSelectedView: (view: 'arena' | 'agents' | 'battles' | 'rankings') => void;
+
+  // New Gladiator System actions
+  initializeSystem: (config?: any) => Promise<void>;
+  shutdownSystem: () => Promise<void>;
+  analyzeRepository: (request: AnalysisRequest) => Promise<string>;
+  activateEmergencyStop: () => void;
+  deactivateEmergencyStop: () => Promise<void>;
+  updateSystemStatus: () => void;
+  getAnalysisResult: (id: string) => AnalysisResult | null;
 }
 
 // Initial mock data
@@ -197,6 +205,13 @@ export const useGladiatorStore = create<GladiatorStore>()(subscribeWithSelector(
   repositories: initialRepositories,
   isArenaActive: false,
   selectedView: 'arena',
+  
+  // New Gladiator System state
+  gladiatorSystem: null,
+  systemStatus: null,
+  analysisResults: [],
+  isSystemInitialized: false,
+  emergencyStopActive: false,
   
   // Agent actions
   addAgent: (agentData) => {
@@ -351,4 +366,96 @@ export const useGladiatorStore = create<GladiatorStore>()(subscribeWithSelector(
   setActiveBattle: (battle) => set({ activeBattle: battle }),
   setArenaActive: (active) => set({ isArenaActive: active }),
   setSelectedView: (view) => set({ selectedView: view }),
+
+  // New Gladiator System actions
+  initializeSystem: async (config = {}) => {
+    try {
+      const system = createGladiatorSystem(config);
+      await system.initialize();
+      set({ 
+        gladiatorSystem: system, 
+        isSystemInitialized: true,
+        emergencyStopActive: false
+      });
+      
+      // Start status monitoring
+      const updateStatus = () => {
+        const status = system.getSystemStatus();
+        set({ 
+          systemStatus: status,
+          emergencyStopActive: status.emergencyStopActive 
+        });
+      };
+      
+      // Update status every 5 seconds
+      setInterval(updateStatus, 5000);
+      updateStatus(); // Initial update
+      
+    } catch (error) {
+      console.error('Failed to initialize Gladiator System:', error);
+      throw error;
+    }
+  },
+
+  shutdownSystem: async () => {
+    const { gladiatorSystem } = get();
+    if (gladiatorSystem) {
+      await gladiatorSystem.shutdown();
+      set({ 
+        gladiatorSystem: null, 
+        isSystemInitialized: false,
+        systemStatus: null,
+        emergencyStopActive: false
+      });
+    }
+  },
+
+  analyzeRepository: async (request: AnalysisRequest) => {
+    const { gladiatorSystem } = get();
+    if (!gladiatorSystem) {
+      throw new Error('Gladiator System not initialized');
+    }
+    
+    const analysisId = await gladiatorSystem.analyzeRepository(request);
+    
+    // Update analysis results
+    const results = gladiatorSystem.getAllAnalysisResults();
+    set({ analysisResults: results });
+    
+    return analysisId;
+  },
+
+  activateEmergencyStop: () => {
+    const { gladiatorSystem } = get();
+    if (gladiatorSystem) {
+      gladiatorSystem.activateEmergencyStop();
+      set({ emergencyStopActive: true });
+    }
+  },
+
+  deactivateEmergencyStop: async () => {
+    const { gladiatorSystem } = get();
+    if (gladiatorSystem) {
+      await gladiatorSystem.deactivateEmergencyStop();
+      set({ emergencyStopActive: false });
+    }
+  },
+
+  updateSystemStatus: () => {
+    const { gladiatorSystem } = get();
+    if (gladiatorSystem) {
+      const status = gladiatorSystem.getSystemStatus();
+      const results = gladiatorSystem.getAllAnalysisResults();
+      set({ 
+        systemStatus: status, 
+        analysisResults: results,
+        emergencyStopActive: status.emergencyStopActive
+      });
+    }
+  },
+
+  getAnalysisResult: (id: string) => {
+    const { gladiatorSystem } = get();
+    return gladiatorSystem ? gladiatorSystem.getAnalysisResult(id) : null;
+  },
 })));

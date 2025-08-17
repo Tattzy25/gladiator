@@ -4,6 +4,7 @@ import Navigation from './components/Navigation';
 import Arena from './components/Arena';
 import AgentCenter from './components/AgentCenter';
 import Leaderboard from './components/Leaderboard';
+import SystemControl from './components/SystemControl';
 
 function App() {
   return (
@@ -14,7 +15,8 @@ function App() {
           <Route path="/arena" element={<Arena />} />
           <Route path="/agents" element={<AgentCenter />} />
           <Route path="/leaderboard" element={<Leaderboard />} />
-          <Route path="/" element={<Navigate to="/arena" replace />} />
+          <Route path="/system" element={<SystemControl />} />
+          <Route path="/" element={<Navigate to="/system" replace />} />
         </Routes>
       </div>
     </Router>
